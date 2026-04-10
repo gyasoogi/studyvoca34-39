@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voca Challenge</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // --- 1. 내장 아이콘 컴포넌트 (외부 라이브러리 의존성 제거) ---
+        const Star = ({ fill = "none", size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+        const Home = ({ size = 24, className = "", strokeWidth=2 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+        const GraduationCap = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>;
+        const BookOpen = ({ size = 24, className = "", strokeWidth=2 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+        const Brain = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>;
+        const ListChecks = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>;
+        const RotateCcw = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const CheckCircle2 = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+        const AlertCircle = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
+
+        // --- 2. 단어 데이터 ---
+        const vocabularyData = [
+          // Day 34
+          { id: 3401, day: 34, word: 'measure', meaning: '조치, 대책; 척도, 기준; (많은) 양, 정도; 재다, 측정하다; 판단하다, 평가하다', sentence: 'We must take strong measures against the crime.', translation: '우리는 그 범죄에 대해 강력한 조치를 취해야 한다.' },
+          { id: 3402, day: 34, word: 'dimension', meaning: '(길이, 높이, 폭 등의) 치수, 크기; 측면; [수학, 물리] 차원', sentence: 'The fourth dimension is time.', translation: '4차원은 시간이다.' },
+          { id: 3403, day: 34, word: 'immense', meaning: '거대한, 매우 큰', sentence: 'The project required an immense amount of money.', translation: '그 프로젝트는 막대한 양의 돈을 필요로 했다.' },
+          { id: 3404, day: 34, word: 'migrate', meaning: '(사람이) 이주하다, (동물, 새 등이 계절에 따라) 이동하다', sentence: 'Many birds migrate south for the winter.', translation: '많은 새들이 겨울을 나기 위해 남쪽으로 이동한다.' },
+          { id: 3405, day: 34, word: 'immigrate', meaning: '(다른 나라에서) 이민 오다, 이주해 오다', sentence: 'They immigrated to Canada in 2010.', translation: '그들은 2010년에 캐나다로 이민을 왔다.' },
+          { id: 3406, day: 34, word: 'emigrate', meaning: '(다른 나라로) 이민 가다, 이주하다', sentence: 'He decided to emigrate from his home country.', translation: '그는 조국을 떠나 이민을 가기로 결심했다.' },
+          { id: 3407, day: 34, word: 'minor', meaning: '작은, 적은, 덜 중요한; [음악] 단조의; 미성년자; 부전공', sentence: 'It was only a minor problem.', translation: '그것은 단지 사소한 문제였다.' },
+          { id: 3408, day: 34, word: 'minister', meaning: '성직자, 목사; (한국, 유럽 등의) 장관', sentence: 'The Prime Minister made a statement.', translation: '총리가 성명을 발표했다.' },
+          { id: 3409, day: 34, word: 'administer', meaning: '경영[운영]하다, 관리하다; (법을) 집행하다; (약 등을) 주다, 투여하다', sentence: 'The agency administers social security benefits.', translation: '그 기관은 사회 보장 혜택을 관리한다.' },
+          { id: 3410, day: 34, word: 'diminish', meaning: '감소하다, 줄다; 감소시키다, 줄이다', sentence: 'The pain began to diminish.', translation: '통증이 줄어들기 시작했다.' },
+          { id: 3411, day: 34, word: 'eminent', meaning: '저명한, 존경받는, 중요한', sentence: 'She is an eminent scientist.', translation: '그녀는 저명한 과학자이다.' },
+          { id: 3412, day: 34, word: 'imminent', meaning: '긴박한, (위험, 재난 등이) 곧 일어날 것 같은', sentence: 'A storm is imminent.', translation: '폭풍이 곧 닥칠 것이다.' },
+          { id: 3413, day: 34, word: 'prominent', meaning: '저명한, 중요한; 눈에 띄는, 잘 보이는; 돌출한', sentence: 'He played a prominent role in the talks.', translation: '그는 회담에서 두드러진 역할을 했다.' },
+          { id: 3414, day: 34, word: 'minimum', meaning: '최소(의), 최저(의)', sentence: 'What is the minimum age for this job?', translation: '이 직업의 최저 연령은 얼마입니까?' },
+          { id: 3415, day: 34, word: 'miracle', meaning: '기적, 놀라운 일', sentence: 'It\'s a miracle that nobody was hurt.', translation: '아무도 다치지 않은 것은 기적이다.' },
+          { id: 3416, day: 34, word: 'admire', meaning: '존경하다, 찬양하다; (감탄하며) 바라보다', sentence: 'I really admire your courage.', translation: '나는 당신의 용기를 진심으로 존경한다.' },
+          { id: 3417, day: 34, word: 'marvelous', meaning: '(매우) 훌륭한, 재미있는, 흥미로운', sentence: 'We had a marvelous time at the party.', translation: '우리는 파티에서 멋진 시간을 보냈다.' },
+
+          // Day 35
+          { id: 3501, day: 35, word: 'admit', meaning: '(사실, 비난 등을) 시인[인정]하다; 입장[입학]을 허가하다', sentence: 'He finally admitted his mistake.', translation: '그는 마침내 자신의 실수를 시인했다.' },
+          { id: 3502, day: 35, word: 'commit', meaning: '범하다, 저지르다; 약속[서약]하다; (감옥, 병원 등에) 보내다', sentence: 'They committed a serious crime.', translation: '그들은 심각한 범죄를 저질렀다.' },
+          { id: 3503, day: 35, word: 'committee', meaning: '위원회', sentence: 'The committee met yesterday.', translation: '위원회는 어제 회의를 가졌다.' },
+          { id: 3504, day: 35, word: 'emit', meaning: '(가스, 빛, 열 등을) 내뿜다, 방출하다', sentence: 'The factory emits toxic fumes.', translation: '공장이 유독 가스를 내뿜는다.' },
+          { id: 3505, day: 35, word: 'omit', meaning: '생략하다, 빠뜨리다', sentence: 'You can omit the second paragraph.', translation: '두 번째 단락은 생략해도 됩니다.' },
+          { id: 3506, day: 35, word: 'permit', meaning: '허락하다, 용인하다; 허가증', sentence: 'Smoking is not permitted in the building.', translation: '건물 내에서는 흡연이 허용되지 않는다.' },
+          { id: 3507, day: 35, word: 'submit', meaning: '제출하다; (법, 권위 등에) 복종[굴복]하다', sentence: 'Submit your homework by Friday.', translation: '금요일까지 숙제를 제출하세요.' },
+          { id: 3508, day: 35, word: 'transmit', meaning: '전송하다, 전하다; (빛, 열, 소리 등을) 전도하다, 투과시키다', sentence: 'Radio waves are transmitted through the air.', translation: '라디오 전파는 공기를 통해 전송된다.' },
+          { id: 3509, day: 35, word: 'mission', meaning: '임무, 사명; (조직, 개인 등의) 목표; (정부, 종교) 사절(단)', sentence: 'Their mission was to find a cure.', translation: '그들의 임무는 찾는 것이었다.' },
+          { id: 3510, day: 35, word: 'commission', meaning: '위원회; 수수료, 커미션; 위임(장); 의뢰[주문]하다; 위임하다, 권한을 주다', sentence: 'He gets a 10 percent commission.', translation: '그는 10퍼센트의 수수료를 받는다.' },
+          { id: 3511, day: 35, word: 'mess', meaning: '더러움, 어수선함, 혼란 (상태); 엉망진창으로 만들다', sentence: 'My room is a total mess.', translation: '내 방은 완전히 엉망진창이다.' },
+          { id: 3512, day: 35, word: 'moderate', meaning: '중간의; 온건한, 도를 지나치지 않는; 누그러뜨리다, 완화하다[되다]', sentence: 'The price is quite moderate.', translation: '가격이 꽤 적당하다.' },
+          { id: 3513, day: 35, word: 'modernize', meaning: '현대[근대]화하다, 현대식으로 만들다', sentence: 'They need to modernize the system.', translation: '그들은 시스템을 현대화할 필요가 있다.' },
+          { id: 3514, day: 35, word: 'modest', meaning: '겸손한; 별로 많지[크지] 않은, 별로 비싸지 않은', sentence: 'She is very modest about her achievements.', translation: '그녀는 자신의 업적에 대해 매우 겸손하다.' },
+          { id: 3515, day: 35, word: 'modify', meaning: '변경하다, 수정하다; [문법] 수식하다', sentence: 'The plan was modified to save money.', translation: '그 계획은 돈을 절약하기 위해 수정되었다.' },
+          { id: 3516, day: 35, word: 'accommodate', meaning: '숙박시키다; 수용하다; ~의 편의를 도모하다; 적응하다[시키다]', sentence: 'The hotel can accommodate 500 guests.', translation: '그 호텔은 500명의 손님을 수용할 수 있다.' },
+          { id: 3517, day: 35, word: 'commodity', meaning: '상품, 판매상품', sentence: 'Oil is an important global commodity.', translation: '석유는 중요한 글로벌 상품이다.' },
+          { id: 3518, day: 35, word: 'mold', meaning: '(주조용의) 형(型), 틀; 곰팡이; 틀에 넣어 만들다; (성격, 태도 등을) 형성하다', sentence: 'Pour the chocolate into the mold.', translation: '초콜릿을 틀에 부으세요.' },
+          { id: 3519, day: 35, word: 'mortal', meaning: '죽을 운명의; (병, 상처가) 치명적인; 인간', sentence: 'All humans are mortal.', translation: '모든 인간은 죽을 운명이다.' },
+          { id: 3520, day: 35, word: 'mortgage', meaning: '저당(권), 저당 잡히기; 융자(금); 저당 잡히다', sentence: 'We have a 20-year mortgage.', translation: '우리는 20년 만기 저당 대출을 받았다.' },
+          { id: 3521, day: 35, word: 'murder', meaning: '살인(죄), 살해; 죽이다, 살인하다', sentence: 'He was charged with murder.', translation: '그는 살인죄로 기소되었다.' },
+
+          // Day 36
+          { id: 3601, day: 36, word: 'move', meaning: '움직이다, 이동(하다); 이사하다; 진행[진척]되다; 감동시키다; 조치, 행동', sentence: 'The news moved her to tears.', translation: '그 뉴스는 그녀를 울게 만들었다.' },
+          { id: 3602, day: 36, word: 'motive', meaning: '움직이게 하는, 원동력이 되는; (행위의) 동기, 자극', sentence: 'What was the motive for the attack?', translation: '그 공격의 동기는 무엇이었습니까?' },
+          { id: 3603, day: 36, word: 'motion', meaning: '움직임, 흔들림; 동작; 동작을 하다', sentence: 'He made a motion for me to sit.', translation: '그가 나에게 앉으라고 몸짓을 했다.' },
+          { id: 3604, day: 36, word: 'emotion', meaning: '감정, 정서', sentence: 'She showed no emotion.', translation: '그녀는 아무런 감정도 드러내지 않았다.' },
+          { id: 3605, day: 36, word: 'promote', meaning: '장려[촉진]하다; 승진[승격]시키다; (상품, 행사 등을) 홍보하다', sentence: 'They are promoting a new movie.', translation: '그들은 신작 영화를 홍보하고 있다.' },
+          { id: 3606, day: 36, word: 'remote', meaning: '동떨어진, 외딴; (시간, 관계 등이) 먼; (가능성이) 희박한; 원격 조정의', sentence: 'He lives in a remote village.', translation: '그는 외딴 마을에 산다.' },
+          { id: 3607, day: 36, word: 'moment', meaning: '순간, 찰나; (특정한) 때, 시기', sentence: 'I’ll be back in a moment.', translation: '금방 돌아올게요.' },
+          { id: 3608, day: 36, word: 'community', meaning: '(지역) 공동체; 단체, 모임, 커뮤니티', sentence: 'We live in a friendly community.', translation: '우리는 친절한 지역 사회에 산다.' },
+          { id: 3609, day: 36, word: 'communicate', meaning: '(생각, 감정, 정보 등을) 전달하다, 의사소통하다', sentence: 'They communicate by email.', translation: '그들은 이메일로 의사소통한다.' },
+          { id: 3610, day: 36, word: 'common', meaning: '일반의, 흔한, 보통의; 공통의, 공동의; 공통(점)', sentence: 'We have many common interests.', translation: '우리는 많은 공통된 관심사를 가지고 있다.' },
+          { id: 3611, day: 36, word: 'mutual', meaning: '상호간의, 서로의, 공통의', sentence: 'Our respect is mutual.', translation: '우리의 존경은 상호적이다.' },
+          { id: 3612, day: 36, word: 'commute', meaning: '(정기적으로) 통근하다; 통근[통학] (시간)', sentence: 'She commutes to work by train.', translation: '그녀는 기차로 출퇴근한다.' },
+          { id: 3613, day: 36, word: 'native', meaning: '출생지의, 원주민(의); 토박이(의); 선천적인, 고유의', sentence: 'He is a native of Korea.', translation: '그는 한국 토박이이다.' },
+          { id: 3614, day: 36, word: 'nation', meaning: '국가, 나라; 국민, 민족', sentence: 'The whole nation was in shock.', translation: '전 국민이 충격에 빠졌다.' },
+          { id: 3615, day: 36, word: 'nature', meaning: '자연(계); 성질, 특징, 천성', sentence: 'It is against his nature to lie.', translation: '거짓말하는 것은 그의 천성에 맞지 않는다.' },
+          { id: 3616, day: 36, word: 'innate', meaning: '선천적인, 타고난', sentence: 'She has an innate talent for music.', translation: '그녀는 음악에 타고난 재능이 있다.' },
+          { id: 3617, day: 36, word: 'negative', meaning: '부정적인; 반대하는; 음성의, 음극의, 음수의; 부정, 반대', sentence: 'Try not to have a negative attitude.', translation: '부정적인 태도를 갖지 않도록 노력하세요.' },
+          { id: 3618, day: 36, word: 'deny', meaning: '부인[부정]하다; 거절하다', sentence: 'She denied stealing the money.', translation: '그녀는 돈을 훔친 것을 부인했다.' },
+          { id: 3619, day: 36, word: 'neutral', meaning: '중립의; (색, 모양, 성질 등이) 중간의; 중립인 것, 중립국', sentence: 'I try to remain neutral.', translation: '나는 중립을 지키려 노력한다.' },
+          { id: 3620, day: 36, word: 'norm', meaning: '표준, 기준; 평균, 정상', sentence: 'Social norms are changing.', translation: '사회적 규범이 변하고 있다.' },
+          { id: 3621, day: 36, word: 'enormous', meaning: '거대한, 엄청나게 큰, 막대한', sentence: 'The project required an enormous effort.', translation: '그 프로젝트는 엄청난 노력을 필요로 했다.' },
+
+          // Day 37
+          { id: 3701, day: 37, word: 'numerous', meaning: '많은, 다수의', sentence: 'He has numerous friends.', translation: '그는 친구가 많다.' },
+          { id: 3702, day: 37, word: 'innumerable', meaning: '셀 수 없이 많은', sentence: 'There are innumerable stars in the sky.', translation: '하늘에는 셀 수 없이 많은 별들이 있다.' },
+          { id: 3703, day: 37, word: 'nutrition', meaning: '영양분 (섭취)', sentence: 'Better nutrition leads to better health.', translation: '더 나은 영양은 더 나은 건강으로 이어진다.' },
+          { id: 3704, day: 37, word: 'nourish', meaning: '영양분을 주다; (능력 등을) 육성[조성]하다', sentence: 'The cream nourishes the skin.', translation: '그 크림은 피부에 영양을 공급한다.' },
+          { id: 3705, day: 37, word: 'nurse', meaning: '간호사; 유모; 간호하다, 돌보다', sentence: 'The nurse took her temperature.', translation: '간호사가 그녀의 체온을 쟀다.' },
+          { id: 3706, day: 37, word: 'nurture', meaning: '양육(양성/육성)하다; 영양분; (계획, 아이디어 등을) 품다', sentence: 'She nurtured the child with care.', translation: '그녀는 정성으로 아이를 양육했다.' },
+          { id: 3707, day: 37, word: 'melody', meaning: '멜로디, 선율, 가락', sentence: 'It\'s a beautiful melody.', translation: '아름다운 선율이다.' },
+          { id: 3708, day: 37, word: 'tragedy', meaning: '비극, 비극적 사건', sentence: 'The accident was a terrible tragedy.', translation: '그 사고는 끔찍한 비극이었다.' },
+          { id: 3709, day: 37, word: 'operate', meaning: '작동하다; 작동시키다; (사업체 등이) 영업[작업]하다; 수술하다', sentence: 'Do you know how to operate this machine?', translation: '이 기계를 어떻게 작동하는지 아세요?' },
+          { id: 3710, day: 37, word: 'cooperate', meaning: '협력하다, 협동하다, 협조하다', sentence: 'Let\'s cooperate to finish this.', translation: '이것을 끝내기 위해 협력합시다.' },
+          { id: 3711, day: 37, word: 'option', meaning: '선택(권), 선택의 자유; (학교의) 선택 과목; (자동차, 컴퓨터 등의) 옵션', sentence: 'I have no other option.', translation: '나에게는 다른 선택의 여지가 없다.' },
+          { id: 3712, day: 37, word: 'adopt', meaning: '입양하다, 양자로 삼다; (의견, 방법, 계획 등을) 채택하다', sentence: 'They decided to adopt a baby.', translation: '그들은 아기를 입양하기로 결정했다.' },
+          { id: 3713, day: 37, word: 'opinion', meaning: '의견, 생각, 견해', sentence: 'In my opinion, it\'s too expensive.', translation: '내 생각에 그것은 너무 비싸다.' },
+          { id: 3714, day: 37, word: 'notable', meaning: '주목할 만한, 탁월한', sentence: 'This is a notable achievement.', translation: '이것은 주목할 만한 성취이다.' },
+          { id: 3715, day: 37, word: 'notice', meaning: '주목, 주의; 게시(물), 공고, 안내(판); 통지(서), 통보; 알아차리다; 주목하다', sentence: 'Did you notice the sign?', translation: '그 표지판을 보셨나요?' },
+          { id: 3716, day: 37, word: 'notify', meaning: '알리다, 통보하다', sentence: 'Please notify us of any changes.', translation: '변경 사항이 있으면 알려주세요.' },
+          { id: 3717, day: 37, word: 'notion', meaning: '관념, 개념, 생각', sentence: 'I have no notion of what he means.', translation: '나는 그가 무엇을 의미하는지 전혀 모르겠다.' },
+          { id: 3718, day: 37, word: 'announce', meaning: '(공식적으로) 발표하다, 알리다', sentence: 'The results will be announced soon.', translation: '결과가 곧 발표될 것이다.' },
+          { id: 3719, day: 37, word: 'pronounce', meaning: '발음하다; 선언하다, 선고하다', sentence: 'How do you pronounce this word?', translation: '이 단어를 어떻게 발음하나요?' },
+          { id: 3720, day: 37, word: 'novel', meaning: '(장편) 소설; 새로운, 기발한', sentence: 'She is writing a novel.', translation: '그녀는 소설을 쓰고 있다.' },
+          { id: 3721, day: 37, word: 'innovate', meaning: '혁신하다, 쇄신하다', sentence: 'Companies must innovate to stay competitive.', translation: '기업들은 경쟁력을 유지하기 위해 혁신해야 한다.' },
+          { id: 3722, day: 37, word: 'renew', meaning: '갱신하다, ~의 기한을 연장하다; 재개하다', sentence: 'I need to renew my passport.', translation: '나는 여권을 갱신해야 한다.' },
+          { id: 3723, day: 37, word: 'numeral', meaning: '숫자를 나타내는; 숫자', sentence: 'Roman numerals are still used.', translation: '로마 숫자는 여전히 사용된다.' },
+
+          // Day 38
+          { id: 3801, day: 38, word: 'ordinary', meaning: '보통의, 평범한, 통상적인', sentence: 'It was just an ordinary day.', translation: '그저 평범한 하루였다.' },
+          { id: 3802, day: 38, word: 'subordinate', meaning: '~을 하위에 놓다; (지위, 계급이) 하위의, 하급의; 부차[부수]적인; 하급자', sentence: 'He is a subordinate officer.', translation: '그는 하급 장교이다.' },
+          { id: 3803, day: 38, word: 'coordinate', meaning: '조직화[통합]하다; 조정하다; 꾸미다; 동등한 [것(사람)]; 잘 조화되어 있는 것', sentence: 'We need to coordinate our efforts.', translation: '우리는 노력을 조율해야 한다.' },
+          { id: 3804, day: 38, word: 'origin', meaning: '기원, 유래; 출신', sentence: 'The word has a Greek origin.', translation: '그 단어는 그리스어에서 유래했다.' },
+          { id: 3805, day: 38, word: 'orient', meaning: '(일정 방향으로) 향하게 하다; 적응시키다', sentence: 'New students must orient themselves.', translation: '신입생들은 스스로 적응해야 한다.' },
+          { id: 3806, day: 38, word: 'prepare', meaning: '준비하다, 대비하다', sentence: 'Prepare for the worst.', translation: '최악의 상황에 대비하라.' },
+          { id: 3807, day: 38, word: 'apparatus', meaning: '기구, 기계, 장치; (정치 활동 등의) 조직', sentence: 'The laboratory has modern apparatus.', translation: '그 실험실은 현대적인 장비를 갖추고 있다.' },
+          { id: 3808, day: 38, word: 'repair', meaning: '수리[수선]하다; 바로잡다; 수리, 수선, 보수', sentence: 'The car needs a major repair.', translation: '그 차는 대대적인 수리가 필요하다.' },
+          { id: 3809, day: 38, word: 'emperor', meaning: '황제, 제왕', sentence: 'The emperor ruled a vast territory.', translation: '황제는 광활한 영토를 통치했다.' },
+          { id: 3810, day: 38, word: 'imperial', meaning: '제국의, 황제의', sentence: 'The imperial palace is a tourist attraction.', translation: '황궁은 관광 명소이다.' },
+          { id: 3811, day: 38, word: 'transparent', meaning: '투명한, 비치는; 명쾌한, 명백한, 이해하기 쉬운', sentence: 'Glass is transparent.', translation: '유리는 투명하다.' },
+          { id: 3812, day: 38, word: 'apparent', meaning: '명백한; 외견상의, 겉모양만의', sentence: 'It was apparent that he was lying.', translation: '그가 거짓말을 하고 있다는 것이 명백했다.' },
+          { id: 3813, day: 38, word: 'appear', meaning: '~처럼 보이다, ~인 것 같다; (장소, TV, 법정 등에) 나타나다, 출현[출연]하다', sentence: 'He appears to be happy.', translation: '그는 행복해 보인다.' },
+          { id: 3814, day: 38, word: 'compare', meaning: '비교하다, 견주다; 비유하다', sentence: 'Compare the two products.', translation: '두 제품을 비교해 보세요.' },
+          { id: 3815, day: 38, word: 'peer', meaning: '동료, (나이, 능력, 신분 등이) 동등한 사람; 응시하다, 자세히 들여다보다', sentence: 'He is respected by his peers.', translation: '그는 동료들에게 존경받는다.' },
+          { id: 3816, day: 38, word: 'partial', meaning: '부분적인; 불공평한, 편파적인; 편애하는, (어떤 것을 특히) 좋아하는', sentence: 'The plan was only a partial success.', translation: '그 계획은 부분적인 성공에 불과했다.' },
+          { id: 3817, day: 38, word: 'particle', meaning: '소량, 미량, 작은 조각; [물리] 소립자', sentence: 'Particles of dust were floating.', translation: '먼지 입자들이 떠다니고 있었다.' },
+          { id: 3818, day: 38, word: 'particular', meaning: '특정한; 특별한, 특유의; (성격, 식성 등이) 까다로운', sentence: 'I have no particular reason.', translation: '나는 특별한 이유가 없다.' },
+          { id: 3819, day: 38, word: 'apart', meaning: '(시간, 공간적으로) (~와) 떨어져[진]; 따로따로(인), 별개로[의]', sentence: 'They live five miles apart.', translation: '그들은 5마일 떨어져 산다.' },
+          { id: 3820, day: 38, word: 'portion', meaning: '부분; 몫, 할당; [음식] 1인분', sentence: 'A portion of the roof was damaged.', translation: '지붕의 일부가 파손되었다.' },
+          { id: 3821, day: 38, word: 'proportion', meaning: '비율, (~에 대응한) 크기[양/정도]; 균형, 조화', sentence: 'The proportion of boys to girls is 2:1.', translation: '남녀의 비율은 2대 1이다.' },
+
+          // Day 39
+          { id: 3901, day: 39, word: 'passage', meaning: '통로; (사람, 탈것 등의) 통행; 한 구절; (법안 등의) 통과; (시간의) 경과, 진행', sentence: 'The passage leads to the garden.', translation: '그 통로는 정원으로 이어진다.' },
+          { id: 3902, day: 39, word: 'passenger', meaning: '승객, 여객', sentence: 'The bus was full of passengers.', translation: '버스는 승객들로 가득 찼다.' },
+          { id: 3903, day: 39, word: 'passerby', meaning: '통행인', sentence: 'A passerby helped the old lady.', translation: '한 행인이 노부인을 도와주었다.' },
+          { id: 3904, day: 39, word: 'pastime', meaning: '오락, 소일거리', sentence: 'Baseball is a popular pastime.', translation: '야구는 인기 있는 여가 활동이다.' },
+          { id: 3905, day: 39, word: 'surpass', meaning: '~을 능가하다, ~보다 낫다', sentence: 'He surpassed all expectations.', translation: '그는 모든 기대를 능가했다.' },
+          { id: 3906, day: 39, word: 'pace', meaning: '(일, 생활, 걸음 등의) 속도, 페이스; 걸음, 보폭', sentence: 'The runners set a fast pace.', translation: '주자들은 빠른 속도를 냈다.' },
+          { id: 3907, day: 39, word: 'pathetic', meaning: '한심한, 형편없는; 애처로운, 가슴 아픈', sentence: 'The kitten made a pathetic sound.', translation: '새끼 고양이가 애처로운 소리를 냈다.' },
+          { id: 3908, day: 39, word: 'antipathy', meaning: '(강한) 반감, 혐오', sentence: 'I feel a strong antipathy toward him.', translation: '나는 그에게 강한 반감을 느낀다.' },
+          { id: 3909, day: 39, word: 'empathy', meaning: '공감 (능력), 감정 이입', sentence: 'Empathy is essential for nurses.', translation: '공감 능력은 간호사들에게 필수적이다.' },
+          { id: 3910, day: 39, word: 'sympathy', meaning: '동정(심), 연민; 동감, 공감, 찬성', sentence: 'I have deep sympathy for the victims.', translation: '나는 희생자들에게 깊은 연민을 느낀다.' },
+          { id: 3911, day: 39, word: 'patient', meaning: '참을성[인내심]이 있는, 끈기 있는; 환자', sentence: 'You need to be patient with children.', translation: '아이들에게는 참을성이 있어야 한다.' },
+          { id: 3912, day: 39, word: 'passion', meaning: '열정; 열중, 애착', sentence: 'Music is his greatest passion.', translation: '음악은 그의 가장 큰 열정이다.' },
+          { id: 3913, day: 39, word: 'compassion', meaning: '(깊은) 동정, (남을) 측은하게 여기는 마음', sentence: 'Show compassion for those in need.', translation: '어려움에 처한 사람들에게 자비심을 보이세요.' },
+          { id: 3914, day: 39, word: 'patriot', meaning: '애국자', sentence: 'He is a true patriot.', translation: '그는 진정한 애국자이다.' },
+          { id: 3915, day: 39, word: 'patron', meaning: '후원자, 후원 단체; 고객, 단골', sentence: 'The museum has many wealthy patrons.', translation: '그 박물관은 많은 부유한 후원자들을 두고 있다.' },
+          { id: 3916, day: 39, word: 'pattern', meaning: '양식, 형태, 패턴; 도안, 무늬; 본보기, 견본', sentence: 'The pattern is very complex.', translation: '그 무늬는 매우 복잡하다.' },
+          { id: 3917, day: 39, word: 'pedestrian', meaning: '보행자; 보행자(용)의', sentence: 'This street is for pedestrians only.', translation: '이 거리는 보행자 전용입니다.' },
+          { id: 3918, day: 39, word: 'expedition', meaning: '(특정 목적을 위한) 원정, 탐험(대)', sentence: 'They went on an expedition to the poles.', translation: '그들은 양극 탐험을 떠났다.' },
+          { id: 3919, day: 39, word: 'compel', meaning: '억지로 ~하게 하다, 강요하다', sentence: 'The law compels people to pay taxes.', translation: '법은 사람들에게 세금을 내도록 강요한다.' },
+          { id: 3920, day: 39, word: 'expel', meaning: '추방하다, 쫓아내다', sentence: 'He was expelled from school.', translation: '그는 학교에서 퇴학당했다.' },
+          { id: 3921, day: 39, word: 'appeal', meaning: '(도움, 정보 등을) 호소[간청]하다; ~의 흥미를 끌다; 항소[상고/상소]하다', sentence: 'The charity appealed for donations.', translation: '그 자선 단체는 기부를 호소했다.' },
+          { id: 3922, day: 39, word: 'polish', meaning: '닦다, 윤이 나게 하다; 연마하다, 세련되게 다듬다; 광택(제); 윤 내기; 세련(됨)', sentence: 'She polished the silver table.', translation: '그녀는 은색 테이블을 닦았다.' },
+          { id: 3923, day: 39, word: 'impulse', meaning: '충동, 자극; 추진(력)', sentence: 'I bought this on impulse.', translation: '나는 이것을 충동적으로 샀다.' },
+          { id: 3924, day: 39, word: 'penalty', meaning: '형벌, 처벌; 벌금; 불이익; [경기] (반칙에 대한) 페널티[벌칙/벌점]', sentence: 'The penalty for speeding is high.', translation: '과속에 대한 벌금은 높다.' },
+          { id: 3925, day: 39, word: 'punish', meaning: '벌하다, 처벌하다', sentence: 'The child was punished for lying.', translation: '아이는 거짓말을 해서 벌을 받았다.' },
+        ];
+
+        // --- 정규식 안전 처리 함수 ---
+        const escapeRegExp = (string) => {
+          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        };
+
+        // --- 3. 메인 앱 컴포넌트 ---
+        const App = () => {
+          const [starredIds, setStarredIds] = useState(new Set());
+          const [view, setView] = useState('home'); 
+          const [selectedDay, setSelectedDay] = useState(34);
+          const [onlyStarred, setOnlyStarred] = useState(false);
+          
+          const [testQuestions, setTestQuestions] = useState([]);
+          const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+          const [testScore, setTestScore] = useState(0);
+          const [testFinished, setTestFinished] = useState(false);
+          const [selectedAnswer, setSelectedAnswer] = useState(null);
+          const [isAnswered, setIsAnswered] = useState(false);
+          const [testType, setTestType] = useState(1);
+
+          const days = [34, 35, 36, 37, 38, 39];
+
+          const toggleStar = (id) => {
+            const newStarred = new Set(starredIds);
+            if (newStarred.has(id)) newStarred.delete(id);
+            else newStarred.add(id);
+            setStarredIds(newStarred);
+          };
+
+          const filteredWords = useMemo(() => {
+            let list = vocabularyData.filter(w => w.day === selectedDay);
+            if (onlyStarred) {
+              list = vocabularyData.filter(w => starredIds.has(w.id));
+            }
+            return list;
+          }, [selectedDay, onlyStarred, starredIds]);
+
+          const startTest = (type, targetPool = null) => {
+            let pool = targetPool || vocabularyData.filter(w => w.day === selectedDay);
+            if (onlyStarred && !targetPool) {
+              pool = vocabularyData.filter(w => starredIds.has(w.id));
+            }
+
+            if (pool.length < 4) {
+              alert("테스트를 생성하기에 단어가 부족합니다. (최소 4개 필요)");
+              return;
+            }
+
+            const shuffled = [...pool].sort(() => 0.5 - Math.random());
+            const questions = shuffled.map(word => {
+              const options = [word];
+              while (options.length < 4) {
+                const randomWord = vocabularyData[Math.floor(Math.random() * vocabularyData.length)];
+                if (!options.find(o => o.id === randomWord.id)) {
+                  options.push(randomWord);
+                }
+              }
+              return {
+                word,
+                options: options.sort(() => 0.5 - Math.random())
+              };
+            });
+
+            setTestType(type);
+            setTestQuestions(questions);
+            setCurrentQuestionIdx(0);
+            setTestScore(0);
+            setTestFinished(false);
+            setIsAnswered(false);
+            setSelectedAnswer(null);
+            setView('test');
+          };
+
+          const handleAnswer = (option) => {
+            if (isAnswered) return;
+            
+            setSelectedAnswer(option);
+            setIsAnswered(true);
+            
+            const isCorrect = option.id === testQuestions[currentQuestionIdx].word.id;
+            if (isCorrect) {
+              setTestScore(prev => prev + 1);
+            } else {
+              toggleStar(testQuestions[currentQuestionIdx].word.id);
+            }
+
+            const delay = isCorrect ? 1000 : 2500;
+            setTimeout(() => {
+              nextQuestion();
+            }, delay);
+          };
+
+          const nextQuestion = () => {
+            if (currentQuestionIdx < testQuestions.length - 1) {
+              setCurrentQuestionIdx(prev => prev + 1);
+              setIsAnswered(false);
+              setSelectedAnswer(null);
+            } else {
+              setTestFinished(true);
+            }
+          };
+
+          return (
+            <div className="min-h-screen pb-28">
+              <header className="bg-indigo-700 text-white px-6 py-5 sticky top-0 z-20 shadow-lg flex justify-between items-center">
+                <h1 className="text-xl font-black tracking-tight flex items-center gap-2">
+                  <GraduationCap size={26} /> VOCA CHALLENGE
+                </h1>
+                {view !== 'home' && (
+                  <button onClick={() => setView('home')} className="p-2 bg-indigo-800 rounded-full hover:bg-indigo-900 transition">
+                    <Home size={22} />
+                  </button>
+                )}
+              </header>
+
+              <main className="max-w-xl mx-auto p-4 pt-6">
+                {view === 'home' && (
+                  <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                      <h2 className="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2">
+                        <BookOpen size={20} className="text-indigo-600" /> Day별 암기 (뜻 전용)
+                      </h2>
+                      <div className="grid grid-cols-3 gap-3">
+                        {days.map(day => (
+                          <button
+                            key={day}
+                            onClick={() => { setSelectedDay(day); setView('learn'); setOnlyStarred(false); }}
+                            className="py-6 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all font-black text-2xl text-slate-700"
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+                        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <Brain size={20} className="text-indigo-600" /> 전체 범위 실전 테스트
+                        </h2>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={() => startTest(1, vocabularyData)}
+                            className="bg-indigo-600 text-white p-4 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-md hover:bg-indigo-700 transition"
+                          >
+                            <ListChecks size={24} />
+                            <span className="font-bold">예문 빈칸</span>
+                          </button>
+                          <button 
+                            onClick={() => startTest(2, vocabularyData)}
+                            className="bg-indigo-400 text-white p-4 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-md hover:bg-indigo-500 transition"
+                          >
+                            <RotateCcw size={24} />
+                            <span className="font-bold">뜻 매칭</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => { setOnlyStarred(true); setView('learn'); }}
+                        className="bg-amber-500 text-white p-6 rounded-3xl flex items-center justify-between shadow-xl hover:bg-amber-600 transition"
+                      >
+                        <div className="text-left">
+                          <p className="text-xl font-black">별표 단어장</p>
+                          <p className="text-amber-100 text-sm">오답 및 중요 단어 모음</p>
+                        </div>
+                        <Star fill="white" size={32} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {view === 'learn' && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-1 mb-6">
+                      <div className="flex justify-between items-center">
+                        <h2 className="text-3xl font-black text-slate-900">
+                          {onlyStarred ? "별표 목록" : `Day ${selectedDay}`}
+                        </h2>
+                      </div>
+                      <p className="text-slate-400 font-medium">총 {filteredWords.length}개의 단어가 있습니다.</p>
+                    </div>
+
+                    {!onlyStarred && (
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        <button 
+                          onClick={() => startTest(1)}
+                          className="bg-white border-2 border-indigo-100 p-3 rounded-2xl flex items-center justify-center gap-2 text-indigo-700 font-bold hover:bg-indigo-50"
+                        >
+                          <ListChecks size={18} /> 예문 테스트
+                        </button>
+                        <button 
+                          onClick={() => startTest(2)}
+                          className="bg-white border-2 border-indigo-100 p-3 rounded-2xl flex items-center justify-center gap-2 text-indigo-700 font-bold hover:bg-indigo-50"
+                        >
+                          <Brain size={18} /> 뜻 매칭
+                        </button>
+                      </div>
+                    )}
+
+                    {filteredWords.length === 0 ? (
+                      <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-300">
+                        <Star size={48} className="mx-auto text-slate-200 mb-4" />
+                        <p className="text-slate-400 font-bold">리스트가 비어있습니다.</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {filteredWords.map(w => (
+                          <div key={w.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center">
+                            <div className="flex-1">
+                              <h3 className="text-2xl font-black text-indigo-800 mb-1">{w.word}</h3>
+                              <p className="text-slate-600 font-medium">{w.meaning}</p>
+                            </div>
+                            <button 
+                              onClick={() => toggleStar(w.id)} 
+                              className={`ml-4 p-3 rounded-2xl transition ${starredIds.has(w.id) ? 'text-amber-400 bg-amber-50' : 'text-slate-200 bg-slate-50'}`}
+                            >
+                              <Star fill={starredIds.has(w.id) ? "currentColor" : "none"} size={28} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {view === 'test' && !testFinished && (
+                  <div>
+                    <div className="flex justify-between items-center mb-6 px-2 font-black text-slate-400">
+                      <span className="text-xs">Q {currentQuestionIdx + 1} / {testQuestions.length}</span>
+                      <div className="flex-1 mx-4 h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-300 ${testType === 1 ? 'bg-indigo-500' : 'bg-indigo-400'}`}
+                          style={{ width: `${((currentQuestionIdx + 1) / testQuestions.length) * 100}%` }}
+                        ></div>
+                      </div>
+                      <button onClick={() => setView('home')} className="text-xs hover:text-red-500">EXIT</button>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-6 text-center">
+                      {testType === 1 ? (
+                        <div className="space-y-6">
+                          <div className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-black rounded-full uppercase tracking-widest">Sentence Challenge</div>
+                          <p className="text-2xl font-bold text-slate-800 leading-relaxed italic">
+                            {testQuestions[currentQuestionIdx].word.sentence.split(new RegExp(`(${escapeRegExp(testQuestions[currentQuestionIdx].word.word)})`, 'i')).map((part, i) => (
+                              <span key={i} className={part.toLowerCase() === testQuestions[currentQuestionIdx].word.word.toLowerCase() ? "inline-block border-b-4 border-indigo-400 px-4 mx-1 text-indigo-400/10" : ""}>
+                                {part.toLowerCase() === testQuestions[currentQuestionIdx].word.word.toLowerCase() ? "____" : part}
+                              </span>
+                            ))}
+                          </p>
+                          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <p className="text-slate-500 font-bold text-sm">해석: {testQuestions[currentQuestionIdx].word.translation}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          <div className="inline-block px-3 py-1 bg-indigo-50 text-indigo-400 text-xs font-black rounded-full uppercase tracking-widest">Meaning Match</div>
+                          <div className="py-6">
+                            <span className="text-5xl font-black text-slate-900 tracking-tight">{testQuestions[currentQuestionIdx].word.word}</span>
+                          </div>
+                          <p className="text-slate-400 font-bold">위 단어의 뜻을 고르세요.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      {testQuestions[currentQuestionIdx].options.map((opt) => {
+                        const currentWord = testQuestions[currentQuestionIdx].word;
+                        const isCorrectOption = opt.id === currentWord.id;
+                        const isSelectedOption = selectedAnswer?.id === opt.id;
+                        
+                        let btnStyle = "bg-white border-2 border-slate-200 text-slate-700 shadow-sm";
+                        if (isAnswered) {
+                          if (isCorrectOption) btnStyle = "bg-emerald-50 border-emerald-500 text-emerald-800 scale-[1.02] shadow-emerald-100";
+                          else if (isSelectedOption) btnStyle = "bg-red-50 border-red-400 text-red-600";
+                          else btnStyle = "bg-white border-slate-100 opacity-40";
+                        } else {
+                          btnStyle = "bg-white border-slate-200 hover:border-indigo-400 active:scale-[0.98]";
+                        }
+
+                        return (
+                          <button
+                            key={opt.id}
+                            onClick={() => handleAnswer(opt)}
+                            disabled={isAnswered}
+                            className={`p-5 rounded-2xl text-left font-black transition-all flex justify-between items-center ${btnStyle}`}
+                          >
+                            <span className="text-lg">{testType === 1 ? opt.word : opt.meaning}</span>
+                            {isAnswered && isCorrectOption && <CheckCircle2 className="text-emerald-500" size={24} />}
+                            {isAnswered && isSelectedOption && !isCorrectOption && <AlertCircle className="text-red-500" size={24} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {isAnswered && selectedAnswer?.id !== testQuestions[currentQuestionIdx].word.id && (
+                      <p className="text-center mt-6 text-slate-400 font-bold animate-pulse">
+                        정답 확인 후 잠시 후 자동으로 넘어갑니다...
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {view === 'test' && testFinished && (
+                  <div className="text-center space-y-10 py-10">
+                    <div className="relative inline-block">
+                      <svg className="w-56 h-56 transform -rotate-90">
+                        <circle cx="112" cy="112" r="100" stroke="currentColor" strokeWidth="16" fill="transparent" className="text-slate-200" />
+                        <circle cx="112" cy="112" r="100" stroke="currentColor" strokeWidth="16" fill="transparent" 
+                          strokeDasharray={628.3} 
+                          strokeDashoffset={628.3 - (628.3 * testScore) / testQuestions.length} 
+                          className="text-indigo-600 transition-all duration-1000 ease-out" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-6xl font-black text-slate-800">{Math.round((testScore / testQuestions.length) * 100)}%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h2 className="text-4xl font-black text-slate-900">Finish!</h2>
+                      <p className="text-slate-500 font-bold text-xl">총 {testQuestions.length}문제 중 {testScore}문제 정답</p>
+                      <div className="bg-amber-50 text-amber-700 py-3 px-6 rounded-2xl inline-block font-bold">
+                        틀린 단어는 별표 리스트에 저장되었습니다.
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-4 max-w-xs mx-auto">
+                      <button 
+                        onClick={() => setView('home')}
+                        className="bg-indigo-600 text-white p-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition"
+                      >
+                        홈으로 가기
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </main>
+
+              {view !== 'test' && (
+                <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-5 max-w-xl mx-auto flex justify-around items-center z-30 rounded-t-[40px] shadow-[-10px_0_30px_rgba(0,0,0,0.05)]">
+                   <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 transition-all ${view === 'home' ? 'text-indigo-700' : 'text-slate-300'}`}>
+                      <Home size={26} strokeWidth={3} />
+                      <span className="text-[10px] font-black uppercase tracking-tighter">Home</span>
+                   </button>
+                   <button onClick={() => { setOnlyStarred(false); setView('learn'); }} className={`flex flex-col items-center gap-1 transition-all ${view === 'learn' && !onlyStarred ? 'text-indigo-700' : 'text-slate-300'}`}>
+                      <BookOpen size={26} strokeWidth={3} />
+                      <span className="text-[10px] font-black uppercase tracking-tighter">Learn</span>
+                   </button>
+                   <button onClick={() => { setOnlyStarred(true); setView('learn'); }} className={`flex flex-col items-center gap-1 transition-all ${view === 'learn' && onlyStarred ? 'text-amber-500' : 'text-slate-300'}`}>
+                      <Star size={26} fill={view === 'learn' && onlyStarred ? "currentColor" : "none"} strokeWidth={3} />
+                      <span className="text-[10px] font-black uppercase tracking-tighter">Starred</span>
+                   </button>
+                </nav>
+              )}
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
