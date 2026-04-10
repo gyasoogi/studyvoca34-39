@@ -11,6 +11,25 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <script>
+      // 파이어베이스 초기화 (Compat 방식)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCsSr5J7VpXoIjB1TGTbunp5vfuUGj7u_s",
+        authDomain: "vocalearn-b8bb8.firebaseapp.com",
+        projectId: "vocalearn-b8bb8",
+        storageBucket: "vocalearn-b8bb8.firebasestorage.app",
+        messagingSenderId: "125286450367",
+        appId: "1:125286450367:web:4043a2ec42e847140af20a",
+        measurementId: "G-3LEW19DC96"
+      };
+      
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
     <div id="root"></div>
@@ -18,7 +37,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
-        // --- 1. 내장 아이콘 컴포넌트 (외부 라이브러리 의존성 제거) ---
+        // --- 1. 내장 아이콘 컴포넌트 ---
         const Star = ({ fill = "none", size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
         const Home = ({ size = 24, className = "", strokeWidth=2 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
         const GraduationCap = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>;
@@ -28,9 +47,10 @@
         const RotateCcw = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
         const CheckCircle2 = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
         const AlertCircle = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
-
-        // --- 2. 단어 데이터 ---
-        const vocabularyData = [
+        const LogOutIcon = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>;
+	
+        // --- 2. 단어 데이터 (간략화를 위해 일부만 표시, 필요시 기존 데이터를 붙여넣으세요) ---
+	const vocabularyData = [
           // Day 34
           { id: 3401, day: 34, word: 'measure', meaning: '조치, 대책; 척도, 기준; (많은) 양, 정도; 재다, 측정하다; 판단하다, 평가하다', sentence: 'We must take strong measures against the crime.', translation: '우리는 그 범죄에 대해 강력한 조치를 취해야 한다.' },
           { id: 3402, day: 34, word: 'dimension', meaning: '(길이, 높이, 폭 등의) 치수, 크기; 측면; [수학, 물리] 차원', sentence: 'The fourth dimension is time.', translation: '4차원은 시간이다.' },
@@ -172,13 +192,122 @@
           { id: 3925, day: 39, word: 'punish', meaning: '벌하다, 처벌하다', sentence: 'The child was punished for lying.', translation: '아이는 거짓말을 해서 벌을 받았다.' },
         ];
 
+
         // --- 정규식 안전 처리 함수 ---
         const escapeRegExp = (string) => {
           return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         };
 
-        // --- 3. 메인 앱 컴포넌트 ---
+        // --- 3. 로그인 및 회원가입 컴포넌트 ---
+        const AuthScreen = () => {
+          const [studentId, setStudentId] = useState('');
+          const [password, setPassword] = useState('');
+          const [isLoginView, setIsLoginView] = useState(true);
+          const [errorMsg, setErrorMsg] = useState('');
+          const [isLoading, setIsLoading] = useState(false);
+
+          const handleAuth = async (e) => {
+            e.preventDefault();
+            setErrorMsg('');
+            setIsLoading(true);
+
+            // 학번을 이메일 형식으로 변환하여 파이어베이스 인증에 사용
+            const email = `${studentId}@vocalearn.app`;
+
+            try {
+              if (isLoginView) {
+                await auth.signInWithEmailAndPassword(email, password);
+              } else {
+                await auth.createUserWithEmailAndPassword(email, password);
+                alert("회원가입이 완료되었습니다!");
+              }
+            } catch (error) {
+              console.error(error);
+              // 파이어베이스 에러 메시지 한글화 처리
+              switch (error.code) {
+                case 'auth/invalid-email':
+                  setErrorMsg('올바른 학번 형식이 아닙니다.'); break;
+                case 'auth/user-not-found':
+                case 'auth/invalid-credential':
+                  setErrorMsg('가입되지 않은 학번이거나 비밀번호가 틀렸습니다.'); break;
+                case 'auth/wrong-password':
+                  setErrorMsg('비밀번호가 틀렸습니다.'); break;
+                case 'auth/email-already-in-use':
+                  setErrorMsg('이미 가입된 학번입니다.'); break;
+                case 'auth/weak-password':
+                  setErrorMsg('비밀번호는 6자리 이상이어야 합니다.'); break;
+                default:
+                  setErrorMsg('오류가 발생했습니다: ' + error.message);
+              }
+            } finally {
+              setIsLoading(false);
+            }
+          };
+
+          return (
+            <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+              <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 max-w-sm w-full">
+                <div className="text-center mb-8">
+                  <GraduationCap size={48} className="mx-auto text-indigo-600 mb-3" />
+                  <h1 className="text-2xl font-black text-slate-800">VOCA CHALLENGE</h1>
+                  <p className="text-slate-500 font-medium mt-1">학번으로 시작하세요</p>
+                </div>
+
+                <form onSubmit={handleAuth} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">학번</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder="예: 20240001"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">비밀번호</label>
+                    <input 
+                      type="password" 
+                      required 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="비밀번호 (6자리 이상)"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+                    />
+                  </div>
+
+                  {errorMsg && (
+                    <p className="text-red-500 text-sm font-bold text-center">{errorMsg}</p>
+                  )}
+
+                  <button 
+                    type="submit" 
+                    disabled={isLoading}
+                    className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50"
+                  >
+                    {isLoading ? '처리 중...' : (isLoginView ? '로그인' : '회원가입')}
+                  </button>
+                </form>
+
+                <div className="mt-6 text-center">
+                  <button 
+                    onClick={() => { setIsLoginView(!isLoginView); setErrorMsg(''); }}
+                    className="text-slate-500 hover:text-indigo-600 font-bold text-sm transition"
+                  >
+                    {isLoginView ? '처음이신가요? 회원가입하기' : '이미 계정이 있으신가요? 로그인하기'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- 4. 메인 앱 컴포넌트 ---
         const App = () => {
+          const [user, setUser] = useState(null);
+          const [authLoading, setAuthLoading] = useState(true);
+
           const [starredIds, setStarredIds] = useState(new Set());
           const [view, setView] = useState('home'); 
           const [selectedDay, setSelectedDay] = useState(34);
@@ -193,6 +322,19 @@
           const [testType, setTestType] = useState(1);
 
           const days = [34, 35, 36, 37, 38, 39];
+
+          // 인증 상태 추적
+          useEffect(() => {
+            const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+              setUser(currentUser);
+              setAuthLoading(false);
+            });
+            return () => unsubscribe();
+          }, []);
+
+          const handleLogout = () => {
+            auth.signOut();
+          };
 
           const toggleStar = (id) => {
             const newStarred = new Set(starredIds);
@@ -274,17 +416,34 @@
             }
           };
 
+          if (authLoading) {
+            return <div className="min-h-screen flex items-center justify-center text-indigo-600 font-bold">로딩 중...</div>;
+          }
+
+          if (!user) {
+            return <AuthScreen />;
+          }
+
           return (
             <div className="min-h-screen pb-28">
               <header className="bg-indigo-700 text-white px-6 py-5 sticky top-0 z-20 shadow-lg flex justify-between items-center">
                 <h1 className="text-xl font-black tracking-tight flex items-center gap-2">
-                  <GraduationCap size={26} /> VOCA CHALLENGE
+                  <GraduationCap size={26} /> VOCA
                 </h1>
-                {view !== 'home' && (
-                  <button onClick={() => setView('home')} className="p-2 bg-indigo-800 rounded-full hover:bg-indigo-900 transition">
-                    <Home size={22} />
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs bg-indigo-800 px-3 py-1 rounded-full font-bold">
+                    {user.email.split('@')[0]}님
+                  </span>
+                  {view !== 'home' ? (
+                    <button onClick={() => setView('home')} className="p-2 bg-indigo-800 rounded-full hover:bg-indigo-900 transition">
+                      <Home size={20} />
+                    </button>
+                  ) : (
+                    <button onClick={handleLogout} className="p-2 bg-indigo-800 rounded-full hover:bg-indigo-900 transition text-red-300">
+                      <LogOutIcon size={20} />
+                    </button>
+                  )}
+                </div>
               </header>
 
               <main className="max-w-xl mx-auto p-4 pt-6">
