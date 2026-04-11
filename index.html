@@ -14,6 +14,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <script>
       // 파이어베이스 초기화 (Compat 방식)
@@ -29,6 +30,7 @@
       
       firebase.initializeApp(firebaseConfig);
       const auth = firebase.auth();
+      const db = firebase.firestore(); // 이 줄 추가 (DB 초기화)
     </script>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
@@ -312,6 +314,8 @@
           const [view, setView] = useState('home'); 
           const [selectedDay, setSelectedDay] = useState(34);
           const [onlyStarred, setOnlyStarred] = useState(false);
+
+          const [starredFilterDay, setStarredFilterDay] = useState('all');
           
           const [testQuestions, setTestQuestions] = useState([]);
           const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -325,8 +329,15 @@
 
           // 인증 상태 추적
           useEffect(() => {
-            const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+            const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
               setUser(currentUser);
+              if (currentUser) {
+                // Firestore에서 해당 유저의 별표 목록 문서 읽기
+                const doc = await db.collection('users').doc(currentUser.uid).get();
+                if (doc.exists && doc.data().starredIds) {
+                  setStarredIds(new Set(doc.data().starredIds));
+                }
+              }
               setAuthLoading(false);
             });
             return () => unsubscribe();
@@ -336,20 +347,36 @@
             auth.signOut();
           };
 
-          const toggleStar = (id) => {
+          const toggleStar = async (id) => {
+            if (!user) return;
+            
             const newStarred = new Set(starredIds);
             if (newStarred.has(id)) newStarred.delete(id);
             else newStarred.add(id);
+            
             setStarredIds(newStarred);
+
+            // Firestore의 'users' 컬렉션 내 [유저UID] 문서에 저장
+            try {
+              await db.collection('users').doc(user.uid).set({
+                starredIds: Array.from(newStarred) // Set을 배열로 변환하여 저장
+              }, { merge: true });
+            } catch (error) {
+              console.error("저장 중 오류 발생:", error);
+            }
           };
 
           const filteredWords = useMemo(() => {
-            let list = vocabularyData.filter(w => w.day === selectedDay);
             if (onlyStarred) {
-              list = vocabularyData.filter(w => starredIds.has(w.id));
+              let list = vocabularyData.filter(w => starredIds.has(w.id));
+              // '전체(all)'가 아닐 경우 선택된 Day만 필터링
+              if (starredFilterDay !== 'all') {
+                list = list.filter(w => w.day === parseInt(starredFilterDay));
+              }
+              return list;
             }
-            return list;
-          }, [selectedDay, onlyStarred, starredIds]);
+            return vocabularyData.filter(w => w.day === selectedDay);
+          }, [selectedDay, onlyStarred, starredIds, starredFilterDay]);
 
           const startTest = (type, targetPool = null) => {
             let pool = targetPool || vocabularyData.filter(w => w.day === selectedDay);
@@ -513,6 +540,26 @@
                       </div>
                       <p className="text-slate-400 font-medium">총 {filteredWords.length}개의 단어가 있습니다.</p>
                     </div>
+
+                    {onlyStarred && (
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
+                        <button 
+                          onClick={() => setStarredFilterDay('all')}
+                          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition ${starredFilterDay === 'all' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}
+                        >
+                          전체
+                        </button>
+                        {[34, 35, 36, 37, 38, 39].map(d => (
+                          <button 
+                            key={d}
+                            onClick={() => setStarredFilterDay(d.toString())}
+                            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition ${starredFilterDay === d.toString() ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}
+                          >
+                            Day {d}
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
                     {!onlyStarred && (
                       <div className="grid grid-cols-2 gap-3 mb-6">
