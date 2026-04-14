@@ -14,7 +14,6 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <script>
       // 파이어베이스 초기화 (Compat 방식)
@@ -30,7 +29,6 @@
       
       firebase.initializeApp(firebaseConfig);
       const auth = firebase.auth();
-      const db = firebase.firestore(); // 이 줄 추가 (DB 초기화)
     </script>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
@@ -263,7 +261,7 @@
                       required 
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="예: 20101"
+                      placeholder="예: 20240001"
                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
                     />
                   </div>
@@ -314,8 +312,6 @@
           const [view, setView] = useState('home'); 
           const [selectedDay, setSelectedDay] = useState(34);
           const [onlyStarred, setOnlyStarred] = useState(false);
-
-          const [starredFilterDay, setStarredFilterDay] = useState('all');
           
           const [testQuestions, setTestQuestions] = useState([]);
           const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -329,15 +325,8 @@
 
           // 인증 상태 추적
           useEffect(() => {
-            const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+            const unsubscribe = auth.onAuthStateChanged((currentUser) => {
               setUser(currentUser);
-              if (currentUser) {
-                // Firestore에서 해당 유저의 별표 목록 문서 읽기
-                const doc = await db.collection('users').doc(currentUser.uid).get();
-                if (doc.exists && doc.data().starredIds) {
-                  setStarredIds(new Set(doc.data().starredIds));
-                }
-              }
               setAuthLoading(false);
             });
             return () => unsubscribe();
@@ -347,36 +336,20 @@
             auth.signOut();
           };
 
-          const toggleStar = async (id) => {
-            if (!user) return;
-            
+          const toggleStar = (id) => {
             const newStarred = new Set(starredIds);
             if (newStarred.has(id)) newStarred.delete(id);
             else newStarred.add(id);
-            
             setStarredIds(newStarred);
-
-            // Firestore의 'users' 컬렉션 내 [유저UID] 문서에 저장
-            try {
-              await db.collection('users').doc(user.uid).set({
-                starredIds: Array.from(newStarred) // Set을 배열로 변환하여 저장
-              }, { merge: true });
-            } catch (error) {
-              console.error("저장 중 오류 발생:", error);
-            }
           };
 
           const filteredWords = useMemo(() => {
+            let list = vocabularyData.filter(w => w.day === selectedDay);
             if (onlyStarred) {
-              let list = vocabularyData.filter(w => starredIds.has(w.id));
-              // '전체(all)'가 아닐 경우 선택된 Day만 필터링
-              if (starredFilterDay !== 'all') {
-                list = list.filter(w => w.day === parseInt(starredFilterDay));
-              }
-              return list;
+              list = vocabularyData.filter(w => starredIds.has(w.id));
             }
-            return vocabularyData.filter(w => w.day === selectedDay);
-          }, [selectedDay, onlyStarred, starredIds, starredFilterDay]);
+            return list;
+          }, [selectedDay, onlyStarred, starredIds]);
 
           const startTest = (type, targetPool = null) => {
             let pool = targetPool || vocabularyData.filter(w => w.day === selectedDay);
@@ -541,26 +514,6 @@
                       <p className="text-slate-400 font-medium">총 {filteredWords.length}개의 단어가 있습니다.</p>
                     </div>
 
-                    {onlyStarred && (
-                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
-                        <button 
-                          onClick={() => setStarredFilterDay('all')}
-                          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition ${starredFilterDay === 'all' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}
-                        >
-                          전체
-                        </button>
-                        {[34, 35, 36, 37, 38, 39].map(d => (
-                          <button 
-                            key={d}
-                            onClick={() => setStarredFilterDay(d.toString())}
-                            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition ${starredFilterDay === d.toString() ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}
-                          >
-                            Day {d}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
                     {!onlyStarred && (
                       <div className="grid grid-cols-2 gap-3 mb-6">
                         <button 
@@ -622,11 +575,27 @@
                         <div className="space-y-6">
                           <div className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-black rounded-full uppercase tracking-widest">Sentence Challenge</div>
                           <p className="text-2xl font-bold text-slate-800 leading-relaxed italic">
-                            {testQuestions[currentQuestionIdx].word.sentence.split(new RegExp(`(${escapeRegExp(testQuestions[currentQuestionIdx].word.word)})`, 'i')).map((part, i) => (
-                              <span key={i} className={part.toLowerCase() === testQuestions[currentQuestionIdx].word.word.toLowerCase() ? "inline-block border-b-4 border-indigo-400 px-4 mx-1 text-indigo-400/10" : ""}>
-                                {part.toLowerCase() === testQuestions[currentQuestionIdx].word.word.toLowerCase() ? "____" : part}
-                              </span>
-                            ))}
+                            {(() => {
+                              const currentWordObj = testQuestions[currentQuestionIdx].word;
+                              const sentence = currentWordObj.sentence;
+                              const wordRoot = currentWordObj.word.toLowerCase();
+                              
+                              // 정규식 설명: 단어 원형(wordRoot)으로 시작하고 뒤에 알파벳(s, ed, ing 등)이 더 붙을 수 있는 패턴을 찾습니다.
+                              // 예: 'admit'인 경우 'admitted', 'admitting', 'admits' 등을 모두 포함
+                              const regex = new RegExp(`(${escapeRegExp(wordRoot)}[a-z]*)`, 'gi');
+                              
+                              return sentence.split(regex).map((part, i) => {
+                                // 분리된 파트가 단어 원형을 포함하는지 확인 (대소문자 무관)
+                                if (part.toLowerCase().includes(wordRoot)) {
+                                  return (
+                                    <span key={i} className="inline-block border-b-4 border-indigo-400 px-4 mx-1 text-transparent select-none">
+                                      ____
+                                    </span>
+                                  );
+                                }
+                                return <span key={i}>{part}</span>;
+                              });
+                            })()}
                           </p>
                           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                             <p className="text-slate-500 font-bold text-sm">해석: {testQuestions[currentQuestionIdx].word.translation}</p>
